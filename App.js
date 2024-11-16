@@ -10,64 +10,58 @@ import Chat from './screens/Chat';
 import Home from './screens/Home';
 
 const Stack = createStackNavigator();
-const AuthenticatedUserContext = createContext({});
+const AuthenticatedUserContext = createContext(null);
 
 const AuthenticatedUserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-return (
+  return (
     <AuthenticatedUserContext.Provider value={{ user, setUser }}>
       {children}
     </AuthenticatedUserContext.Provider>
   );
 };
 
-function ChatStack() {
-  return (
-    <Stack.Navigator defaultScreenOptions={Home}>
-      <Stack.Screen name='Home' component={Home} />
-      <Stack.Screen name='Chat' component={Chat} />
-    </Stack.Navigator>
-  );
-}
+const ChatStack = () => (
+  <Stack.Navigator initialRouteName="Home">
+    <Stack.Screen name="Login" component={Login} />
+    <Stack.Screen name="Home" component={Home} />
+    <Stack.Screen name="Chat" component={Chat} />
+  </Stack.Navigator>
+);
 
-function AuthStack() {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name='Login' component={Login} />
-      <Stack.Screen name='Signup' component={Signup} />
-    </Stack.Navigator>
-  );
-}
+const AuthStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="Login" component={Login} />
+    <Stack.Screen name="Signup" component={Signup} />
+  </Stack.Navigator>
+);
 
-function RootNavigator() {
+const RootNavigator = () => {
   const { user, setUser } = useContext(AuthenticatedUserContext);
   const [isLoading, setIsLoading] = useState(true);
-useEffect(() => {
-    // onAuthStateChanged returns an unsubscriber
-    const unsubscribeAuth = onAuthStateChanged(
-      auth,
-      async authenticatedUser => {
-        authenticatedUser ? setUser(authenticatedUser) : setUser(null);
-        setIsLoading(false);
-      }
-    );
-// unsubscribe auth listener on unmount
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, authenticatedUser => {
+      setUser(authenticatedUser || null);
+      setIsLoading(false);
+    });
     return unsubscribeAuth;
-  }, [user]);
-if (isLoading) {
+  }, []);
+
+  if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size='large' />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
       </View>
     );
   }
 
-return (
+  return (
     <NavigationContainer>
       {user ? <ChatStack /> : <AuthStack />}
     </NavigationContainer>
   );
-}
+};
 
 export default function App() {
   return (
@@ -76,3 +70,11 @@ export default function App() {
     </AuthenticatedUserProvider>
   );
 }
+
+const styles = {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+};

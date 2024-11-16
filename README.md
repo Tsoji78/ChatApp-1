@@ -102,3 +102,250 @@ Your support helps me keep creating amazing projects!
 - **Discord**: [Join Our Community](https://discord.com/invite/G2RnuUD8)
 - **Medium**: [@betomoedano01](https://medium.com/@betomoedano01)
 - **Figma**: [betomoedano](https://www.figma.com/@betomoedano)
+
+
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  TouchableOpacity,
+  Text,
+  Image,
+  FlatList,
+  StyleSheet,
+  Animated,
+  TouchableWithoutFeedback
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { FontAwesome, Entypo, AntDesign, MaterialIcons } from '@expo/vector-icons';
+import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
+import { auth, database } from '../config/firebase';
+import colors from '../colors';
+
+const Home = () => {
+  const [posts, setPosts] = useState([]);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(false);
+  const navigation = useNavigation();
+  const sidebarWidth = new Animated.Value(0);  // Initialize sidebar animation
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity onPress={toggleSidebar} style={styles.headerIcon}>
+          <Entypo name="menu" size={24} color={colors.gray} />
+        </TouchableOpacity>
+      ),
+      headerRight: () => (
+        <Image source={{ uri: "https://i.pravatar.cc/300" }} style={styles.profileImage} />
+      ),
+    });
+  }, [navigation]);
+
+  useEffect(() => {
+    const postsRef = collection(database, 'posts');
+    const q = query(postsRef, orderBy('createdAt', 'desc'));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      setPosts(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const toggleSidebar = () => {
+    if (isSidebarVisible) {
+      Animated.timing(sidebarWidth, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: false,
+      }).start(() => setIsSidebarVisible(false));
+    } else {
+      setIsSidebarVisible(true);
+      Animated.timing(sidebarWidth, {
+        toValue: 250,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    }
+  };
+
+  const renderPost = ({ item }) => (
+    <View style={styles.post}>
+      <View style={styles.postHeader}>
+        <Image source={{ uri: item.userAvatar || "https://i.pravatar.cc/150" }} style={styles.userAvatar} />
+        <View>
+          <Text style={styles.username}>{item.username}</Text>
+          <Text style={styles.handle}>@{item.handle}</Text>
+        </View>
+      </View>
+      <Text style={styles.postContent}>{item.content}</Text>
+      <View style={styles.postActions}>
+        <TouchableOpacity style={styles.actionButton}>
+          <AntDesign name="hearto" size={18} color={colors.dark} />
+          <Text style={styles.actionText}>Like</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionButton}>
+          <FontAwesome name="comment-o" size={18} color={colors.dark} />
+          <Text style={styles.actionText}>Comment</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionButton}>
+          <MaterialIcons name="share" size={18} color={colors.dark} />
+          <Text style={styles.actionText}>Share</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      {isSidebarVisible && (
+        <TouchableWithoutFeedback onPress={toggleSidebar}>
+          <View style={styles.overlay} />
+        </TouchableWithoutFeedback>
+      )}
+
+      <Animated.View style={[styles.sidebar, { width: sidebarWidth }]}>
+        <TouchableOpacity style={styles.sidebarOption} onPress={() => navigation.navigate('Profile')}>
+          <FontAwesome name="user" size={24} color={colors.dark} />
+          <Text style={styles.sidebarText}>Profile</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.sidebarOption} onPress={() => navigation.navigate('Settings')}>
+          <AntDesign name="setting" size={24} color={colors.dark} />
+          <Text style={styles.sidebarText}>Settings</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.sidebarOption}>
+          <FontAwesome name="user-plus" size={24} color={colors.dark} />
+          <Text style={styles.sidebarText}>Follow</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.sidebarOption}>
+          <MaterialIcons name="groups" size={24} color={colors.dark} />
+          <Text style={styles.sidebarText}>Groups</Text>
+        </TouchableOpacity>
+      </Animated.View>
+
+      <FlatList
+        data={posts}
+        renderItem={renderPost}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.postsContainer}
+      />
+
+      {/* Chat Button */}
+      <TouchableOpacity
+        onPress={() => navigation.navigate("Chat")}
+        style={styles.chatButton}
+      >
+        <Entypo name="chat" size={24} color={colors.lightGray} />
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+export default Home;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  headerIcon: {
+    marginLeft: 15,
+  },
+  profileImage: {
+    width: 40,
+    height: 40,
+    marginRight: 15,
+    borderRadius: 20,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  sidebar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    height: '100%',
+    backgroundColor: colors.lightGray,
+    padding: 20,
+    zIndex: 2,
+  },
+  sidebarOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 15,
+  },
+  sidebarText: {
+    marginLeft: 10,
+    fontSize: 16,
+    color: colors.gray,
+  },
+  postsContainer: {
+    paddingTop: 10,
+    paddingBottom: 100,
+  },
+  post: {
+    backgroundColor: '#f9f9f9',
+    padding: 15,
+    marginVertical: 8,
+    marginHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+  },
+  postHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  userAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  username: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  handle: {
+    fontSize: 14,
+    color: colors.gray,
+  },
+  postContent: {
+    fontSize: 15,
+    color: colors.darkGray,
+    marginVertical: 10,
+  },
+  postActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionText: {
+    marginLeft: 5,
+    color: colors.gray,
+  },
+  chatButton: {
+    backgroundColor: colors.primary,
+    height: 50,
+    width: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'absolute',
+    bottom: 50,
+    right: 20,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+  },
+});
